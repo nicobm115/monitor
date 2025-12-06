@@ -1,34 +1,36 @@
 import streamlit as st
 import requests
 import math
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Monitor Ría de Vigo", page_icon="🌬️", layout="wide")
 
-# --- CSS PARA FLECHAS ROTATORIAS ---
+# --- CSS MEJORADO ---
 st.markdown("""
 <style>
     .metric-card {
-        background-color: #262730;
         padding: 15px;
         border-radius: 10px;
         text-align: center;
         margin: 5px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        transition: transform 0.2s;
     }
-    .big-font { font-size: 24px; font-weight: bold; }
-    .small-font { font-size: 12px; color: #aaa; }
+    .metric-card:hover { transform: scale(1.02); }
+    .big-font { font-size: 28px; font-weight: bold; margin: 5px 0; }
+    .small-font { font-size: 13px; font-weight: 600; text-transform: uppercase; opacity: 0.9; }
+    .dir-font { font-size: 14px; opacity: 0.9; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- LÓGICA DE NEGOCIO ---
 API_URL = "https://servizos.meteogalicia.gal/mgrss/observacion/ultimos10minEstacionsMeteo.action"
 DISPLAY_STATIONS = [{"id": "10125", "name": "CÍES (Mar)"}, {"id": "10906", "name": "CANGAS (Costa)"}]
-REF_TIERRA_ID = "10154" # O Viso
+REF_TIERRA_ID = "10154" # O Viso (Redondela)
 
-def mps_to_knots(mps): return float(mps) * 1.94384 if mps else 0.0
+def mps_to_knots(mps): return float(mps) * 1.94384 if mps is not None else 0.0
 
 def calc_theta_v(t, hr, p):
     if t is None or hr is None or p is None: return None
@@ -40,17 +42,18 @@ def calc_theta_v(t, hr, p):
     return Tv * (1000.0 / p) ** 0.286
 
 def get_wind_color(knots):
+    """Devuelve (Fondo, Texto) para asegurar contraste"""
     k = float(knots)
-    if k < 3:   return "#FFFFFF", "#000000"
-    if k < 6:   return "#E1F5FE", "#000000"
-    if k < 9:   return "#81D4FA", "#000000"
-    if k < 12:  return "#00FFBF", "#000000" 
-    if k < 16:  return "#76FF03", "#000000" 
-    if k < 20:  return "#FFEA00", "#000000"
-    if k < 25:  return "#FF9100", "#000000"
-    if k < 30:  return "#D50000", "#000000"
-    return "#4A148C", "#FFFFFF"  
-    
+    if k < 3:   return "#FFFFFF", "#000000" # Calma (Blanco)
+    if k < 6:   return "#E1F5FE", "#000000" # Ventolina
+    if k < 9:   return "#81D4FA", "#000000" # Flojo
+    if k < 12:  return "#039BE5", "#FFFFFF" # Bonancible (Azul fuerte, texto blanco)
+    if k < 16:  return "#76FF03", "#000000" # Verde Lima (Trigger 12kts)
+    if k < 20:  return "#FFEA00", "#000000" # Amarillo
+    if k < 25:  return "#FF9100", "#000000" # Naranja
+    if k < 30:  return "#D50000", "#FFFFFF" # Rojo
+    return "#4A148C", "#FFFFFF"             # Morado
+
 @st.cache_data(ttl=300) 
 def fetch_all_data():
     try:
@@ -72,13 +75,14 @@ def fetch_all_data():
                     c = m['codigoParametro']; v = m['valor']
                     if c == 'VV_AVG_10m': d['w_spd'] = v
                     elif c == 'DV_AVG_10m': d['w_dir'] = v
-                    elif c == 'VV_RACHA_10m': d['g_spd'] = v # Corregido código racha según PDF
-                    elif c == 'DV_RACHA_10m': d['g_dir'] = v # Corregido código dir racha
+                    elif c == 'VV_RACHA_10m': d['g_spd'] = v 
+                    elif c == 'DV_RACHA_10m': d['g_dir'] = v 
                     elif 'TA_AVG_1.5m' in c: d['temp'] = v
                     elif 'HR_AVG_1.5m' in c: d['hr'] = v
-                    elif 'PR_AVG_1.5m' in c: d['pres'] = v # Corregido código presión
+                    elif 'PR_AVG_1.5m' in c: d['pres'] = v 
                     elif 'DV_SD_10m' in c: d['std'] = v 
                 
+                # Fallback: si no hay dirección de racha, usar la del viento medio
                 if d['g_dir'] == 0 and d['w_dir'] != 0: d['g_dir'] = d['w_dir']
                 parsed_data[sid] = d
                 
@@ -88,7 +92,7 @@ def fetch_all_data():
 
 # --- INTERFAZ WEB ---
 st.title("🌬️ Monitor Ría de Vigo")
-st.caption("@nicobm115 - Datos de MeteoGalicia")
+st.caption("@nicobm115 - Datos: MeteoGalicia")
 
 if st.button("↻ Actualizar Datos"):
     st.cache_data.clear()
@@ -97,14 +101,9 @@ data, timestamp = fetch_all_data()
 
 if data:
     try:
-        # 1. Decirle a Python que el dato original es UTC
         dt_utc = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=ZoneInfo("UTC"))
-        
-        # 2. Convertir a hora de Vigo (Madrid)
         dt_local = dt_utc.astimezone(ZoneInfo("Europe/Madrid"))
-        
-        # 3. Mostrar
-        st.write(f"**Última lectura:** {dt_local.strftime('%H:%M')} (Local)")
+        st.markdown(f"**Última lectura:** `{dt_local.strftime('%H:%M')} Local`")
     except: pass
 
     for st_conf in DISPLAY_STATIONS:
@@ -112,46 +111,61 @@ if data:
         d = data.get(sid)
         
         if d:
-            with st.container():
-                st.subheader(f"📍 {st_conf['name']}")
-                c1, c2, c3, c4 = st.columns(4)
-                
-                # Viento
-                k_w = mps_to_knots(d['w_spd'])
-                col_w = get_wind_color(k_w)
-                # CORRECCIÓN AQUÍ: Eliminado el +180.
-                # Como el icono base ⬇ ya apunta abajo, 0º (Norte) lo mantiene abajo.
-                rot_w = d['w_dir'] 
-                
-                c1.markdown(f"""
-                <div class="metric-card">
-                    <div class="small-font">VIENTO MEDIO</div>
-                    <div class="big-font" style="color:{col_w}">{k_w:.1f} kn</div>
-                    <div style="transform: rotate({rot_w}deg); font-size: 30px; color:{col_w}">⬇</div>
-                    <div class="small-font">{d['w_dir']:.0f}°</div>
+            st.markdown(f"### 📍 {st_conf['name']}")
+            c1, c2, c3, c4 = st.columns([1.2, 1.2, 0.8, 1])
+            
+            # --- VIENTO MEDIO (Con Color Dinámico) ---
+            k_w = mps_to_knots(d['w_spd'])
+            # Desempaquetamos la tupla (Fondo, Texto)
+            bg_w, txt_w = get_wind_color(k_w) 
+            rot_w = d['w_dir'] 
+            
+            with c1:
+                st.markdown(f"""
+                <div class="metric-card" style="background-color: {bg_w} !important; color: {txt_w} !important;">
+                    <div class="small-font" style="color: {txt_w} !important;">VIENTO MEDIO</div>
+                    <div class="big-font" style="color: {txt_w} !important;">{k_w:.1f} kn</div>
+                    <div style="transform: rotate({rot_w}deg); font-size: 35px; line-height: 35px; color: {txt_w} !important;">⬇</div>
+                    <div class="dir-font" style="color: {txt_w} !important;">{d['w_dir']:.0f}°</div>
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Racha
-                k_g = mps_to_knots(d['g_spd'])
-                col_g = get_wind_color(k_g)
-                # CORRECCIÓN AQUÍ: Eliminado el +180
-                rot_g = d['g_dir']
-                
-                c2.markdown(f"""
-                <div class="metric-card">
-                    <div class="small-font">RACHA MÁX</div>
-                    <div class="big-font" style="color:{col_g}">{k_g:.1f} kn</div>
-                    <div style="transform: rotate({rot_g}deg); font-size: 30px; color:{col_g}">⬇</div>
-                    <div class="small-font">{d['g_dir']:.0f}°</div>
+            # --- RACHA (Con Color Dinámico) ---
+            k_g = mps_to_knots(d['g_spd'])
+            # Desempaquetamos la tupla (Fondo, Texto)
+            bg_g, txt_g = get_wind_color(k_g)
+            rot_g = d['g_dir']
+            
+            with c2:
+                st.markdown(f"""
+                <div class="metric-card" style="background-color: {bg_g} !important; color: {txt_g} !important;">
+                    <div class="small-font" style="color: {txt_g} !important;">RACHA MÁX</div>
+                    <div class="big-font" style="color: {txt_g} !important;">{k_g:.1f} kn</div>
+                    <div style="transform: rotate({rot_g}deg); font-size: 35px; line-height: 35px; color: {txt_g} !important;">⬇</div>
+                    <div class="dir-font" style="color: {txt_g} !important;">{d['g_dir']:.0f}°</div>
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Turbulencia / Desviación
-                c3.metric("Turbulencia ", f"±{d['std']:.0f}°", help="Desviación típica")
-                
-                # Meteo
-                c4.metric("Temp / HR", f"{d['temp']}°C", f"{d['hr']}% HR")
+            # --- TURBULENCIA (Color Fijo Oscuro) ---
+            with c3:
+                st.markdown(f"""
+                <div class="metric-card" style="background-color: #37474F; color: #B0BEC5;">
+                    <div class="small-font" style="color: #90A4AE;">Turbulencia</div>
+                    <div class="big-font" style="color: #ECEFF1;">±{d['std']:.0f}°</div>
+                    <div class="dir-font" style="margin-top:15px">Desviación σ</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # --- METEO (Color Fijo Oscuro) ---
+            with c4:
+                st.markdown(f"""
+                <div class="metric-card" style="background-color: #263238; border: 1px solid #37474F;">
+                    <div class="small-font" style="color: #90A4AE;">Atmósfera</div>
+                    <div style="font-size: 26px; font-weight:bold; color: #FDD835; margin: 5px 0;">{d['temp']} °C</div>
+                    <div style="color: #80CBC4; font-weight:bold;">HR: {d['hr']}%</div>
+                    <div style="color: #AAA; font-size: 11px; margin-top:5px;">{d['pres']:.0f} hPa</div>
+                </div>
+                """, unsafe_allow_html=True)
                 
             st.divider()
 
@@ -163,19 +177,23 @@ if data:
         if mar and tierra:
             th_mar = calc_theta_v(mar['temp'], mar['hr'], mar['pres'])
             th_tierra = calc_theta_v(tierra['temp'], tierra['hr'], tierra['pres'])
-            diff = th_tierra - th_mar
             
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Densidad Mar (θv)", f"{th_mar:.2f} K")
-            col2.metric("Densidad Tierra (θv)", f"{th_tierra:.2f} K")
-            col3.metric("Diferencia (Δ)", f"{diff:+.2f} K")
-            
-            if diff > 1.5:
-                st.success(" **POSIBLE VIRAZÓN:** Tierra mucho más ligera. El aire frío del mar entrará acelerando.")
-            elif diff < -1.5:
-                st.warning(" **POSIBLE BOCANA/TERRAL:** Tierra fría y densa.")
+            if th_mar and th_tierra:
+                diff = th_tierra - th_mar
+                
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Densidad Mar (θv)", f"{th_mar:.2f} K")
+                col2.metric("Densidad Tierra (θv)", f"{th_tierra:.2f} K")
+                col3.metric("Diferencia (Δ)", f"{diff:+.2f} K")
+                
+                if diff > 1.5:
+                    st.success(" **POSIBLE VIRAZÓN:** ")
+                elif diff < -1.5:
+                    st.warning(" **POSIBLE BOCANA:** ")
+                else:
+                    st.info("⚖️ **ESTABILIDAD:** No hay gradiente térmico suficiente.")
             else:
-                st.info("⚖️ **ESTABILIDAD:** No hay gradiente térmico suficiente.")
+                st.error("Faltan datos de Presión o Humedad para el cálculo.")
         else:
             st.error("Datos de referencia (Redondela) no disponibles.")
 
