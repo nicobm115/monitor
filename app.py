@@ -22,7 +22,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- LÓGICA DE NEGOCIO (Igual que tu script anterior) ---
+# --- LÓGICA DE NEGOCIO ---
 API_URL = "https://servizos.meteogalicia.gal/mgrss/observacion/ultimos10minEstacionsMeteo.action"
 DISPLAY_STATIONS = [{"id": "10125", "name": "CÍES (Mar)"}, {"id": "10906", "name": "CANGAS (Costa)"}]
 REF_TIERRA_ID = "10154" # O Viso
@@ -43,14 +43,14 @@ def get_wind_color(knots):
     if k < 3:   return "#FFFFFF", "#000000"
     if k < 6:   return "#E1F5FE", "#000000"
     if k < 9:   return "#81D4FA", "#000000"
-    if k < 12:  return "#00FFBF", "#000000" # Azul intenso
-    if k < 16:  return "#76FF03", "#000000" # Verde Lima (Trigger 12kts)
+    if k < 12:  return "#00FFBF", "#000000" 
+    if k < 16:  return "#76FF03", "#000000" 
     if k < 20:  return "#FFEA00", "#000000"
     if k < 25:  return "#FF9100", "#000000"
     if k < 30:  return "#D50000", "#000000"
     return "#4A148C", "#FFFFFF"  
     
-@st.cache_data(ttl=300) # Cachear datos 5 min para no saturar API
+@st.cache_data(ttl=300) 
 def fetch_all_data():
     try:
         ids = [s['id'] for s in DISPLAY_STATIONS] + [REF_TIERRA_ID]
@@ -71,12 +71,12 @@ def fetch_all_data():
                     c = m['codigoParametro']; v = m['valor']
                     if c == 'VV_AVG_10m': d['w_spd'] = v
                     elif c == 'DV_AVG_10m': d['w_dir'] = v
-                    elif c == 'VV_RACHA_10m': d['g_spd'] = v
-                    elif c == 'DV_CONDICION_10m': d['g_dir'] = v
+                    elif c == 'VV_RACHA_10m': d['g_spd'] = v # Corregido código racha según PDF
+                    elif c == 'DV_RACHA_10m': d['g_dir'] = v # Corregido código dir racha
                     elif 'TA_AVG_1.5m' in c: d['temp'] = v
                     elif 'HR_AVG_1.5m' in c: d['hr'] = v
-                    elif 'VV_SD_10m' in c: d['pres'] = v
-                    elif 'DV_SD_10m' in c: d['std'] = v # Desviación Típica (Sigma)
+                    elif 'PR_AVG_1.5m' in c: d['pres'] = v # Corregido código presión
+                    elif 'DV_SD_10m' in c: d['std'] = v 
                 
                 if d['g_dir'] == 0 and d['w_dir'] != 0: d['g_dir'] = d['w_dir']
                 parsed_data[sid] = d
@@ -89,20 +89,17 @@ def fetch_all_data():
 st.title("🌬️ Monitor Ría de Vigo")
 st.caption("Ingeniería de Fluidos & Análisis Térmico")
 
-# Botón actualizar
 if st.button("↻ Actualizar Datos"):
     st.cache_data.clear()
 
 data, timestamp = fetch_all_data()
 
 if data:
-    # Mostrar hora
     try:
         dt = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S")
         st.write(f"**Última lectura:** {dt.strftime('%H:%M')} UTC")
     except: pass
 
-    # MOSTRAR ESTACIONES
     for st_conf in DISPLAY_STATIONS:
         sid = st_conf['id']
         d = data.get(sid)
@@ -115,7 +112,9 @@ if data:
                 # Viento
                 k_w = mps_to_knots(d['w_spd'])
                 col_w = get_wind_color(k_w)
-                rot_w = d['w_dir'] + 180
+                # CORRECCIÓN AQUÍ: Eliminado el +180.
+                # Como el icono base ⬇ ya apunta abajo, 0º (Norte) lo mantiene abajo.
+                rot_w = d['w_dir'] 
                 
                 c1.markdown(f"""
                 <div class="metric-card">
@@ -129,7 +128,8 @@ if data:
                 # Racha
                 k_g = mps_to_knots(d['g_spd'])
                 col_g = get_wind_color(k_g)
-                rot_g = d['g_dir'] + 180
+                # CORRECCIÓN AQUÍ: Eliminado el +180
+                rot_g = d['g_dir']
                 
                 c2.markdown(f"""
                 <div class="metric-card">
@@ -141,34 +141,34 @@ if data:
                 """, unsafe_allow_html=True)
 
                 # Turbulencia / Desviación
-                c3.metric("Turbulencia ", f"±{d['std']:.0f}°", help="Desviación típica de la dirección")
+                c3.metric("Turbulencia ", f"±{d['std']:.0f}°", help="Desviación típica")
                 
                 # Meteo
                 c4.metric("Temp / HR", f"{d['temp']}°C", f"{d['hr']}% HR")
                 
             st.divider()
 
-    # --- ANÁLISIS TÉRMICO (EXPANDER) ---
+    # --- ANÁLISIS TÉRMICO ---
     with st.expander("📊 ANÁLISIS DE GRADIENTE TÉRMICO (Cíes vs O Viso)", expanded=False):
         mar = data.get("10125")
-        tierra = data.get("10154") # O Viso
+        tierra = data.get("10154") 
         
         if mar and tierra:
             th_mar = calc_theta_v(mar['temp'], mar['hr'], mar['pres'])
             th_tierra = calc_theta_v(tierra['temp'], tierra['hr'], tierra['pres'])
             diff = th_tierra - th_mar
             
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Densidad Mar (θv)", f"{th_mar:.2f} K")
-            c2.metric("Densidad Tierra (θv)", f"{th_tierra:.2f} K")
-            c3.metric("Diferencia (Δ)", f"{diff:+.2f} K")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Densidad Mar (θv)", f"{th_mar:.2f} K")
+            col2.metric("Densidad Tierra (θv)", f"{th_tierra:.2f} K")
+            col3.metric("Diferencia (Δ)", f"{diff:+.2f} K")
             
             if diff > 1.5:
-                st.success(" **POSIBLE VIRAZÓN:** Tierra mucho más ligera. El aire frío del mar entrará acelerando (Virazón fuerte).")
+                st.success(" **POSIBLE VIRAZÓN:** Tierra mucho más ligera. El aire frío del mar entrará acelerando.")
             elif diff < -1.5:
-                st.warning(" **POSIBLE BOCANA :** Tierra fría y densa.")
+                st.warning(" **POSIBLE BOCANA/TERRAL:** Tierra fría y densa.")
             else:
-                st.info("⚖️ **ESTABILIDAD:** No hay gradiente térmico suficiente para forzar viento local.")
+                st.info("⚖️ **ESTABILIDAD:** No hay gradiente térmico suficiente.")
         else:
             st.error("Datos de referencia (O Viso) no disponibles.")
 
