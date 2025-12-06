@@ -87,7 +87,7 @@ def fetch_all_data():
 
 # --- INTERFAZ WEB ---
 st.title("🌬️ Monitor Ría de Vigo")
-st.caption("Ingeniería de Fluidos & Análisis Térmico")
+st.caption("@Nicobm115")
 
 if st.button("↻ Actualizar Datos"):
     st.cache_data.clear()
@@ -149,7 +149,7 @@ if data:
             st.divider()
 
     # --- ANÁLISIS TÉRMICO ---
-    with st.expander("📊 ANÁLISIS DE GRADIENTE TÉRMICO (Cíes vs O Viso)", expanded=False):
+    with st.expander("📊 ANÁLISIS DE GRADIENTE TÉRMICO (Cíes vs Redondela))", expanded=False):
         mar = data.get("10125")
         tierra = data.get("10154") 
         
@@ -170,7 +170,8 @@ if data:
             else:
                 st.info("⚖️ **ESTABILIDAD:** No hay gradiente térmico suficiente.")
         else:
-            st.error("Datos de referencia (O Viso) no disponibles.")
+            st.error("Datos de referencia (Redondela) no disponibles.")
 
 else:
     st.error("Error conectando con MeteoGalicia. Intenta refrescar.")
+
