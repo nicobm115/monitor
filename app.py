@@ -3,6 +3,7 @@ import requests
 import math
 import time
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Monitor Ría de Vigo", page_icon="🌬️", layout="wide")
@@ -87,7 +88,7 @@ def fetch_all_data():
 
 # --- INTERFAZ WEB ---
 st.title("🌬️ Monitor Ría de Vigo")
-st.caption("@Nicobm115")
+st.caption("Ingeniería de Fluidos & Análisis Térmico")
 
 if st.button("↻ Actualizar Datos"):
     st.cache_data.clear()
@@ -96,8 +97,14 @@ data, timestamp = fetch_all_data()
 
 if data:
     try:
-        dt = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S")
-        st.write(f"**Última lectura:** {dt.strftime('%H:%M')} UTC")
+        # 1. Decirle a Python que el dato original es UTC
+        dt_utc = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=ZoneInfo("UTC"))
+        
+        # 2. Convertir a hora de Vigo (Madrid)
+        dt_local = dt_utc.astimezone(ZoneInfo("Europe/Madrid"))
+        
+        # 3. Mostrar
+        st.write(f"**Última lectura:** {dt_local.strftime('%H:%M')} (Local)")
     except: pass
 
     for st_conf in DISPLAY_STATIONS:
@@ -149,7 +156,7 @@ if data:
             st.divider()
 
     # --- ANÁLISIS TÉRMICO ---
-    with st.expander("📊 ANÁLISIS DE GRADIENTE TÉRMICO (Cíes vs Redondela))", expanded=False):
+    with st.expander("📊 ANÁLISIS DE GRADIENTE TÉRMICO (Cíes vs O Viso)", expanded=False):
         mar = data.get("10125")
         tierra = data.get("10154") 
         
@@ -170,8 +177,7 @@ if data:
             else:
                 st.info("⚖️ **ESTABILIDAD:** No hay gradiente térmico suficiente.")
         else:
-            st.error("Datos de referencia (Redondela) no disponibles.")
+            st.error("Datos de referencia (O Viso) no disponibles.")
 
 else:
     st.error("Error conectando con MeteoGalicia. Intenta refrescar.")
-
