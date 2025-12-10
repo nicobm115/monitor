@@ -28,7 +28,7 @@ st.markdown("""
 
 # --- LÓGICA ---
 API_URL = "https://servizos.meteogalicia.gal/mgrss/observacion/ultimos10minEstacionsMeteo.action"
-DISPLAY_STATIONS = [{"id": "10125", "name": "CÍES (Mar)"}, {"id": "10906", "name": "CANGAS (Costa)"}]
+DISPLAY_STATIONS = [{"id": "10125", "name": "CÍES "}, {"id": "10906", "name": "CANGAS (Puerto)"}]
 REF_TIERRA_ID = "10154" # O Viso
 
 def mps_to_knots(mps): return float(mps) * 1.94384 if mps else 0.0
@@ -200,3 +200,4 @@ if data:
 
 else:
     st.error("Error conectando con MeteoGalicia.")
+
