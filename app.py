@@ -51,12 +51,12 @@ def get_wind_style(knots):
     """Devuelve (ColorFondo, ColorTexto) según intensidad"""
     k = float(knots)
     if k < 4:   return "#F5F5F5", "#000000" # Calma (Gris claro)
-    if k < 12:  return "#1bcc62", "#000000" # Azul suave
-    if k < 16:  return "#E8F5E9", "#000000" # Verde (Ideal)
-    if k < 21:  return "#FFF9C4", "#000000" # Amarillo (Alegre)
-    if k < 27:  return "#FFF3E0", "#000000" # Naranja (Duro)
-    if k < 34:  return "#FFEBEE", "#000000" # Rojo (Muy duro)
-    return "#F3E5F5", "#6A1B9A"             # Violeta (Temporal)
+    if k < 12:  return "#1ba0cc", "#000000" # Azul suave
+    if k < 16:  return "#1bcc62", "#000000" # Verde (Ideal)
+    if k < 21:  return "#c9cc1b", "#000000" # Amarillo (Alegre)
+    if k < 27:  return "#cc7c1b", "#000000" # Naranja (Duro)
+    if k < 34:  return "#cc201b", "#000000" # Rojo (Muy duro)
+    return "#cc1b76", "#000000"             # Violeta (Temporal)
 
 def get_cardinal(deg):
     dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
@@ -200,5 +200,6 @@ if data:
 
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
