@@ -77,7 +77,7 @@ def fetch_all_data():
             for est in data['listUltimos10min']:
                 sid = str(est['idEstacion'])
                 last_update = est.get('instanteLecturaUTC', 'N/D')
-                d = {'w_spd': 0, 'w_dir': 0, 'g_spd': 0, 'g_dir': 0, 'temp': 0, 'hr': 0, 'pres': 1013.25, 'std': 0}
+                d = {'w_spd': 0, 'w_dir': 0, 'g_spd': 0, 'g_dir': 0, 'temp': 0, 'hr': 0, 'std': 0}
                 
                 for m in est['listaMedidas']:
                     c = m['codigoParametro']; v = m['valor']
@@ -153,11 +153,29 @@ if data:
 
             # --- TURBULENCIA ---
             with c3:
+                # Si es 0 (imposible) o None, mostramos "--"
+                if d['std'] and d['std'] > 0:
+                    val_turb = f"±{d['std']:.0f}°"
+                    sub_txt = "Desviación σ"
+                    color_txt = "#FFF" # Blanco brillante
+                else:
+                    val_turb = "--"
+                    sub_txt = "No disponible"
+                    color_txt = "#666" # Gris apagado
+                    # Lógica opcional para Cangas si std es 0
+
+                if d['std'] == 0 and d['w_spd'] > 0:
+                    # Gust Factor simple: (Racha - Media)
+                    # Si hay 5 nudos de media y 15 de racha, es muy racheado/turbulento
+                    diff_racha = mps_to_knots(d['g_spd'] - d['w_spd'])
+                    val_turb = f"Δ {diff_racha:.1f} kn" 
+                    sub_txt = "Racha vs Media"
+
                 st.markdown(f"""
-                <div class="metric-card" style="background-color: #262730; color: #FFF; border: 1px solid #444;">
+                <div class="metric-card" style="background-color: #262730; color: {color_txt}; border: 1px solid #444;">
                     <div class="label-text" style="color: #AAA;">Turbulencia</div>
-                    <div class="big-text">±{d['std']:.0f}°</div>
-                    <div class="dir-text" style="margin-top:5px; color: #AAA;">Desviación Media º</div>
+                    <div class="big-text">{val_turb}</div>
+                    <div class="dir-text" style="margin-top:5px; color: #AAA;">{sub_txt}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -198,6 +216,7 @@ if data:
 
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
