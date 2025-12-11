@@ -5,8 +5,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Monitor Ría de Vigo", page_icon="🌬️", layout="wide")
-
+st.set_page_config(page_title="Monitor Ría de Vigo", page_icon="🌬️", layout="centered")
+st.caption("@nicobm115-Datos MeteoGalicia")
 # --- CSS INYECTADO (Estilos y Animaciones) ---
 st.markdown("""
 <style>
@@ -171,7 +171,7 @@ if data:
             st.divider()
 
     # --- ANÁLISIS ---
-    with st.expander("📊 ANÁLISIS TÉRMICO ", expanded=True):
+    with st.expander("📊 ANÁLISIS TÉRMICO ", expanded=False):
         mar = data.get("10125")
         tierra = data.get("10154")
         
@@ -192,7 +192,7 @@ if data:
                 elif diff < -1.5:
                     st.warning("**POSIBLE BOCANA/TERRAL:** Tierra fría y densa.")
                 else:
-                    st.info("**ESTABILIDAD:** No hay gradiente térmico significativo.")
+                    st.info("**⚖️ESTABILIDAD:** No hay gradiente térmico significativo.")
             else:
                 st.error("Faltan datos de Presión/Humedad.")
         else:
@@ -200,6 +200,7 @@ if data:
 
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
