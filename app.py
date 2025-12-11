@@ -182,6 +182,12 @@ if data:
 
     # --- ANÁLISIS ---
     with st.expander("📊 ANÁLISIS TÉRMICO ", expanded=False):
+        st.info(
+                    """
+                    Use the table below to add, remove, and edit items.
+                    And don't forget to commit your changes when you're done.
+                    """
+                )
         mar = data.get("10125")
         tierra = data.get("10154")
         
@@ -210,6 +216,7 @@ if data:
 
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
