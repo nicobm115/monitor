@@ -6,7 +6,6 @@ from zoneinfo import ZoneInfo
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Monitor Ría de Vigo", page_icon="🌬️", layout="centered")
-st.caption("@nicobm115-Datos MeteoGalicia")
 # --- CSS INYECTADO (Estilos y Animaciones) ---
 st.markdown("""
 <style>
@@ -120,9 +119,9 @@ def render_wind_card(title, speed, deg):
 
 # --- UI ---
 st.title("🌬️ Monitor Ría de Vigo")
-st.caption("Datos MeteoGalicia | Actualización automática")
+st.caption("@nicobm115-Datos MeteoGalicia")
 
-if st.button("↻ Recargar datos", type="primary"):
+if st.button("↻ Recargar datos"):
     st.cache_data.clear()
 
 data, timestamp = fetch_all_data()
@@ -200,6 +199,7 @@ if data:
 
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
