@@ -7,6 +7,30 @@ from zoneinfo import ZoneInfo
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Monitor Ría de Vigo", page_icon="🌬️", layout="wide")
 
+# --- CSS INYECTADO (Estilos y Animaciones) ---
+st.markdown("""
+<style>
+    .metric-card {
+        padding: 15px;
+        border-radius: 12px;
+        text-align: center;
+        margin-bottom: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    .big-text { font-size: 26px; font-weight: 800; margin: 0; }
+    .label-text { font-size: 12px; text-transform: uppercase; font-weight: 600; opacity: 0.8; }
+    .arrow-icon { 
+        display: inline-block; 
+        font-size: 30px; 
+        line-height: 30px; 
+        margin-top: 5px;
+        transition: transform 0.5s ease-out; /* Animación suave si cambia */
+    }
+    .dir-text { font-size: 14px; opacity: 0.9; margin-top: -5px; }
+</style>
+""", unsafe_allow_html=True)
+
 # --- LÓGICA ---
 API_URL = "https://servizos.meteogalicia.gal/mgrss/observacion/ultimos10minEstacionsMeteo.action"
 DISPLAY_STATIONS = [{"id": "10125", "name": "CÍES"}, {"id": "10906", "name": "CANGAS (Puerto)"}]
@@ -23,16 +47,16 @@ def calc_theta_v(t, hr, p):
     Tv = Tk * (1 + 0.61 * r)
     return Tv * (1000.0 / p) ** 0.286
 
-def get_wind_stream_color(knots):
-    """Devuelve el nombre del color aceptado por Streamlit según la intensidad"""
+def get_wind_style(knots):
+    """Devuelve (ColorFondo, ColorTexto) según intensidad"""
     k = float(knots)
-    if k < 4:   return "gray"    # Calma
-    if k < 10:  return "blue"    # Suave
-    if k < 16:  return "green"   # Fresquito (Ideal vela ligera)
-    if k < 21:  return "yellow"  # Alegre
-    if k < 27:  return "orange"  # Duro
-    if k < 34:  return "red"     # Muy duro
-    return "violet"              # Temporal
+    if k < 4:   return "#F5F5F5", "#333333" # Calma (Gris claro)
+    if k < 10:  return "#E3F2FD", "#1565C0" # Azul suave
+    if k < 16:  return "#E8F5E9", "#2E7D32" # Verde (Ideal)
+    if k < 21:  return "#FFF9C4", "#F57F17" # Amarillo (Alegre)
+    if k < 27:  return "#FFF3E0", "#E65100" # Naranja (Duro)
+    if k < 34:  return "#FFEBEE", "#C62828" # Rojo (Muy duro)
+    return "#F3E5F5", "#6A1B9A"             # Violeta (Temporal)
 
 def get_cardinal(deg):
     dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
@@ -74,9 +98,29 @@ def fetch_all_data():
     except:
         return None, None
 
+def render_wind_card(title, speed, deg):
+    bg, txt = get_wind_style(speed)
+    cardinal = get_cardinal(deg)
+    
+    # LÓGICA DE ROTACIÓN:
+    # Usamos la flecha '⬇' (Unicode). 
+    # A 0 grados (rotación por defecto), apunta abajo. 
+    # Esto cumple tu regla: "0º N flecha hacia abajo".
+    # CSS transform rotate gira en sentido horario.
+    
+    html = f"""
+    <div class="metric-card" style="background-color: {bg}; color: {txt};">
+        <div class="label-text">{title}</div>
+        <div class="big-text">{speed:.1f} kn</div>
+        <div class="arrow-icon" style="transform: rotate({deg}deg);">⬇</div>
+        <div class="dir-text">{deg:.0f}° {cardinal}</div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
 # --- UI ---
 st.title("🌬️ Monitor Ría de Vigo")
-st.caption("Datos MeteoGalicia | @nicobm115")
+st.caption("Datos MeteoGalicia | Actualización automática")
 
 if st.button("↻ Recargar datos", type="primary"):
     st.cache_data.clear()
@@ -99,34 +143,25 @@ if data:
         if d:
             st.subheader(f"📍 {st_conf['name']}")
             
-            # Columnas para los datos
             c1, c2, c3, c4 = st.columns(4)
             
             # --- VIENTO MEDIO ---
-            k_w = mps_to_knots(d['w_spd'])
-            color_w = get_wind_stream_color(k_w)
-            card_w = get_cardinal(d['w_dir'])
-            
             with c1:
-                st.markdown(f"**VIENTO MEDIO**")
-                # Sintaxis nativa de Streamlit para fondo de color
-                st.markdown(f"### :{color_w}-background[ &nbsp; {k_w:.1f} kn &nbsp; ]")
-                st.caption(f"Dirección: **{d['w_dir']:.0f}° ({card_w})**")
+                render_wind_card("Viento Medio", mps_to_knots(d['w_spd']), d['w_dir'])
 
             # --- RACHA ---
-            k_g = mps_to_knots(d['g_spd'])
-            color_g = get_wind_stream_color(k_g)
-            card_g = get_cardinal(d['g_dir'])
-            
             with c2:
-                st.markdown(f"**RACHA MÁX**")
-                # Sintaxis nativa de Streamlit para fondo de color
-                st.markdown(f"### :{color_g}-background[ &nbsp; {k_g:.1f} kn &nbsp; ]")
-                st.caption(f"Dirección: **{d['g_dir']:.0f}° ({card_g})**")
+                render_wind_card("Racha Máx", mps_to_knots(d['g_spd']), d['g_dir'])
 
             # --- TURBULENCIA ---
             with c3:
-                st.metric(label="Turbulencia (σ)", value=f"±{d['std']:.0f}°")
+                st.markdown(f"""
+                <div class="metric-card" style="background-color: #262730; color: #FFF; border: 1px solid #444;">
+                    <div class="label-text" style="color: #AAA;">Turbulencia</div>
+                    <div class="big-text">±{d['std']:.0f}°</div>
+                    <div class="dir-text" style="margin-top:5px; color: #AAA;">Desviación σ</div>
+                </div>
+                """, unsafe_allow_html=True)
 
             # --- METEO ---
             with c4:
@@ -136,7 +171,7 @@ if data:
             st.divider()
 
     # --- ANÁLISIS ---
-    with st.expander("📊 ANÁLISIS TÉRMICO (Virazón vs Terral)", expanded=True):
+    with st.expander("📊 ANÁLISIS TÉRMICO ", expanded=True):
         mar = data.get("10125")
         tierra = data.get("10154")
         
@@ -153,11 +188,11 @@ if data:
                 
                 st.markdown("---")
                 if diff > 1.5:
-                    st.markdown(":green-background[**POSIBLE VIRAZÓN**] Tierra mucho más ligera. El aire frío del mar entrará acelerando.")
+                    st.success("**POSIBLE VIRAZÓN:** Tierra mucho más ligera. El aire frío del mar entrará acelerando.")
                 elif diff < -1.5:
-                    st.markdown(":orange-background[**POSIBLE BOCANA/TERRAL**] Tierra fría y densa.")
+                    st.warning("**POSIBLE BOCANA/TERRAL:** Tierra fría y densa.")
                 else:
-                    st.markdown(":gray-background[**ESTABILIDAD**] No hay gradiente térmico significativo.")
+                    st.info("**ESTABILIDAD:** No hay gradiente térmico significativo.")
             else:
                 st.error("Faltan datos de Presión/Humedad.")
         else:
