@@ -153,13 +153,23 @@ if data:
             with c2:
                 render_wind_card("Racha Máx", mps_to_knots(d['g_spd']), d['g_dir'])
 
-            # --- TURBULENCIA ---
+           # --- TURBULENCIA ---
             with c3:
+                # Si es 0 (imposible) o None, mostramos "--"
+                if d['std'] and d['std'] > 0:
+                    val_turb = f"±{d['std']:.0f}°"
+                    sub_txt = "Desviación σ"
+                    color_txt = "#FFF" # Blanco brillante
+                else:
+                    val_turb = "--"
+                    sub_txt = "No disponible"
+                    color_txt = "#666" # Gris apagado
+
                 st.markdown(f"""
-                <div class="metric-card" style="background-color: #262730; color: #FFF; border: 1px solid #444;">
+                <div class="metric-card" style="background-color: #262730; color: {color_txt}; border: 1px solid #444;">
                     <div class="label-text" style="color: #AAA;">Turbulencia</div>
-                    <div class="big-text">±{d['std']:.0f}°</div>
-                    <div class="dir-text" style="margin-top:5px; color: #AAA;">Desviación Media º</div>
+                    <div class="big-text">{val_turb}</div>
+                    <div class="dir-text" style="margin-top:5px; color: #AAA;">{sub_txt}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -200,6 +210,7 @@ if data:
 
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
