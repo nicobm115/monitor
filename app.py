@@ -158,7 +158,7 @@ if data:
                 <div class="metric-card" style="background-color: #262730; color: #FFF; border: 1px solid #444;">
                     <div class="label-text" style="color: #AAA;">Turbulencia</div>
                     <div class="big-text">±{d['std']:.0f}°</div>
-                    <div class="dir-text" style="margin-top:5px; color: #AAA;">Desviación σ</div>
+                    <div class="dir-text" style="margin-top:5px; color: #AAA;">Desviación Media º</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -199,6 +199,7 @@ if data:
 
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
