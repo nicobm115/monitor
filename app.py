@@ -1,34 +1,15 @@
 import streamlit as st
 import requests
 import math
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Monitor Ría de Vigo", page_icon="🌬️", layout="wide")
 
-# --- CSS ---
-st.markdown("""
-<style>
-    .metric-card {
-        padding: 15px;
-        border-radius: 10px;
-        text-align: center;
-        margin: 5px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        transition: transform 0.2s;
-    }
-    .metric-card:hover { transform: scale(1.02); }
-    .big-font { font-size: 24px; font-weight: bold; margin: 5px 0; }
-    .small-font { font-size: 12px; font-weight: bold; text-transform: uppercase; opacity: 0.9; }
-    .dir-font { font-size: 14px; opacity: 0.9; }
-</style>
-""", unsafe_allow_html=True)
-
 # --- LÓGICA ---
 API_URL = "https://servizos.meteogalicia.gal/mgrss/observacion/ultimos10minEstacionsMeteo.action"
-DISPLAY_STATIONS = [{"id": "10125", "name": "CÍES "}, {"id": "10906", "name": "CANGAS (Puerto)"}]
+DISPLAY_STATIONS = [{"id": "10125", "name": "CÍES"}, {"id": "10906", "name": "CANGAS (Puerto)"}]
 REF_TIERRA_ID = "10154" # O Viso
 
 def mps_to_knots(mps): return float(mps) * 1.94384 if mps else 0.0
@@ -42,18 +23,21 @@ def calc_theta_v(t, hr, p):
     Tv = Tk * (1 + 0.61 * r)
     return Tv * (1000.0 / p) ** 0.286
 
-def get_wind_color(knots):
-    """Devuelve (Fondo, Texto)"""
+def get_wind_stream_color(knots):
+    """Devuelve el nombre del color aceptado por Streamlit según la intensidad"""
     k = float(knots)
-    if k < 3:   return "#FFFFFF", "#000000" # Calma
-    if k < 6:   return "#E1F5FE", "#000000"
-    if k < 9:   return "#81D4FA", "#000000"
-    if k < 12:  return "#00FFBF", "#000000" # Azul intenso
-    if k < 16:  return "#76FF03", "#000000" # Verde Lima
-    if k < 20:  return "#FFEA00", "#000000" # Amarillo
-    if k < 25:  return "#FF9100", "#000000" # Naranja
-    if k < 30:  return "#D50000", "#FFFFFF" # Rojo (Texto Blanco)
-    return "#4A148C", "#FFFFFF"             # Morado (Texto Blanco)
+    if k < 4:   return "gray"    # Calma
+    if k < 10:  return "blue"    # Suave
+    if k < 16:  return "green"   # Fresquito (Ideal vela ligera)
+    if k < 21:  return "yellow"  # Alegre
+    if k < 27:  return "orange"  # Duro
+    if k < 34:  return "red"     # Muy duro
+    return "violet"              # Temporal
+
+def get_cardinal(deg):
+    dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+    ix = int((deg + 11.25)/22.5)
+    return dirs[ix % 16]
 
 @st.cache_data(ttl=300) 
 def fetch_all_data():
@@ -92,9 +76,9 @@ def fetch_all_data():
 
 # --- UI ---
 st.title("🌬️ Monitor Ría de Vigo")
-st.caption("@nicobm115-Datos MeteoGalicia")
+st.caption("Datos MeteoGalicia | @nicobm115")
 
-if st.button("↻ Actualizar Datos"):
+if st.button("↻ Recargar datos", type="primary"):
     st.cache_data.clear()
 
 data, timestamp = fetch_all_data()
@@ -103,76 +87,56 @@ if data:
     try:
         dt_utc = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=ZoneInfo("UTC"))
         dt_local = dt_utc.astimezone(ZoneInfo("Europe/Madrid"))
-        st.markdown(f"**Última lectura:** `{dt_local.strftime('%H:%M')} Local`")
+        st.markdown(f"🕒 **Última lectura:** `{dt_local.strftime('%H:%M')} Local`")
     except: pass
+
+    st.divider()
 
     for st_conf in DISPLAY_STATIONS:
         sid = st_conf['id']
         d = data.get(sid)
         
         if d:
-            st.markdown(f"### 📍 {st_conf['name']}")
-            c1, c2, c3, c4 = st.columns([1.2, 1.2, 0.8, 1])
+            st.subheader(f"📍 {st_conf['name']}")
             
-            # --- VIENTO MEDIO (CORREGIDO) ---
+            # Columnas para los datos
+            c1, c2, c3, c4 = st.columns(4)
+            
+            # --- VIENTO MEDIO ---
             k_w = mps_to_knots(d['w_spd'])
-            # 1. Desempaquetamos la tupla en DOS variables
-            bg_w, txt_w = get_wind_color(k_w) 
-            rot_w = d['w_dir'] 
+            color_w = get_wind_stream_color(k_w)
+            card_w = get_cardinal(d['w_dir'])
             
             with c1:
-                # 2. Inyectamos bg_w en background-color y txt_w en color
-                st.markdown(f"""
-                <div class="metric-card" style="background-color: {bg_w} !important; color: {txt_w} !important;">
-                    <div class="small-font" style="color: {txt_w} !important;">VIENTO MEDIO</div>
-                    <div class="big-font" style="color: {txt_w} !important;">{k_w:.1f} kn</div>
-                    <div style="transform: rotate({rot_w}deg); font-size: 35px; line-height: 35px; color: {txt_w} !important;">⬇</div>
-                    <div class="dir-font" style="color: {txt_w} !important;">{d['w_dir']:.0f}°</div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"**VIENTO MEDIO**")
+                # Sintaxis nativa de Streamlit para fondo de color
+                st.markdown(f"### :{color_w}-background[ &nbsp; {k_w:.1f} kn &nbsp; ]")
+                st.caption(f"Dirección: **{d['w_dir']:.0f}° ({card_w})**")
 
-            # --- RACHA (CORREGIDO) ---
+            # --- RACHA ---
             k_g = mps_to_knots(d['g_spd'])
-            # 1. Desempaquetamos la tupla
-            bg_g, txt_g = get_wind_color(k_g)
-            rot_g = d['g_dir']
+            color_g = get_wind_stream_color(k_g)
+            card_g = get_cardinal(d['g_dir'])
             
             with c2:
-                # 2. Inyectamos los colores
-                st.markdown(f"""
-                <div class="metric-card" style="background-color: {bg_g} !important; color: {txt_g} !important;">
-                    <div class="small-font" style="color: {txt_g} !important;">RACHA MÁX</div>
-                    <div class="big-font" style="color: {txt_g} !important;">{k_g:.1f} kn</div>
-                    <div style="transform: rotate({rot_g}deg); font-size: 35px; line-height: 35px; color: {txt_g} !important;">⬇</div>
-                    <div class="dir-font" style="color: {txt_g} !important;">{d['g_dir']:.0f}°</div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"**RACHA MÁX**")
+                # Sintaxis nativa de Streamlit para fondo de color
+                st.markdown(f"### :{color_g}-background[ &nbsp; {k_g:.1f} kn &nbsp; ]")
+                st.caption(f"Dirección: **{d['g_dir']:.0f}° ({card_g})**")
 
             # --- TURBULENCIA ---
             with c3:
-                st.markdown(f"""
-                <div class="metric-card" style="background-color: #37474F; color: #B0BEC5;">
-                    <div class="small-font" style="color: #90A4AE;">Turbulencia</div>
-                    <div class="big-font" style="color: #ECEFF1;">±{d['std']:.0f}°</div>
-                    <div class="dir-font" style="margin-top:15px">Desviación σ</div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.metric(label="Turbulencia (σ)", value=f"±{d['std']:.0f}°")
 
             # --- METEO ---
             with c4:
-                st.markdown(f"""
-                <div class="metric-card" style="background-color: #263238; border: 1px solid #37474F;">
-                    <div class="small-font" style="color: #90A4AE;">Atmósfera</div>
-                    <div style="font-size: 26px; font-weight:bold; color: #FDD835; margin: 5px 0;">{d['temp']} °C</div>
-                    <div style="color: #80CBC4; font-weight:bold;">HR: {d['hr']}%</div>
-                    <div style="color: #AAA; font-size: 11px; margin-top:5px;">{d['pres']:.0f} hPa</div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.metric(label="Temperatura", value=f"{d['temp']} °C", delta=f"{d['hr']}% HR")
+                st.caption(f"Presión: {d['pres']:.0f} hPa")
             
             st.divider()
 
     # --- ANÁLISIS ---
-    with st.expander("📊 ANÁLISIS DE GRADIENTE TÉRMICO (Cíes vs Redondela)", expanded=False):
+    with st.expander("📊 ANÁLISIS TÉRMICO (Virazón vs Terral)", expanded=True):
         mar = data.get("10125")
         tierra = data.get("10154")
         
@@ -182,17 +146,18 @@ if data:
             
             if th_mar and th_tierra:
                 diff = th_tierra - th_mar
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Densidad Mar (θv)", f"{th_mar:.1f} K")
-                c2.metric("Densidad Tierra (θv)", f"{th_tierra:.1f} K")
-                c3.metric("Diferencia (Δ)", f"{diff:+.2f} K")
+                ac1, ac2, ac3 = st.columns(3)
+                ac1.metric("Densidad Mar (θv)", f"{th_mar:.1f} K")
+                ac2.metric("Densidad Tierra (θv)", f"{th_tierra:.1f} K")
+                ac3.metric("Diferencia (Δ)", f"{diff:+.2f} K", delta_color="inverse")
                 
+                st.markdown("---")
                 if diff > 1.5:
-                    st.success(" **POSIBLE VIRAZÓN:** Tierra mucho más ligera. El aire frío del mar entrará acelerando.")
+                    st.markdown(":green-background[**POSIBLE VIRAZÓN**] Tierra mucho más ligera. El aire frío del mar entrará acelerando.")
                 elif diff < -1.5:
-                    st.warning(" **POSIBLE BOCANA/TERRAL:** Tierra fría y densa.")
+                    st.markdown(":orange-background[**POSIBLE BOCANA/TERRAL**] Tierra fría y densa.")
                 else:
-                    st.info("⚖️ **ESTABILIDAD:** No hay gradiente térmico suficiente.")
+                    st.markdown(":gray-background[**ESTABILIDAD**] No hay gradiente térmico significativo.")
             else:
                 st.error("Faltan datos de Presión/Humedad.")
         else:
@@ -200,4 +165,3 @@ if data:
 
 else:
     st.error("Error conectando con MeteoGalicia.")
-
