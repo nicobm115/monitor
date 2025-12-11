@@ -5,7 +5,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Monitor Ría de Vigo", page_icon="🌬️", layout="centered")
+st.set_page_config(page_title="Monitor Ría de Vigo", page_icon="🌬️", layout="wide")
+
 # --- CSS INYECTADO (Estilos y Animaciones) ---
 st.markdown("""
 <style>
@@ -24,7 +25,7 @@ st.markdown("""
         font-size: 30px; 
         line-height: 30px; 
         margin-top: 5px;
-        transition: transform 0.5s ease-out; /* Animación suave si cambia */
+        transition: transform 0.5s ease-out; 
     }
     .dir-text { font-size: 14px; opacity: 0.9; margin-top: -5px; }
 </style>
@@ -49,13 +50,13 @@ def calc_theta_v(t, hr, p):
 def get_wind_style(knots):
     """Devuelve (ColorFondo, ColorTexto) según intensidad"""
     k = float(knots)
-    if k < 4:   return "#F5F5F5", "#000000" # Calma (Gris claro)
-    if k < 12:  return "#1ba0cc", "#000000" # Azul suave
-    if k < 16:  return "#1bcc62", "#000000" # Verde (Ideal)
-    if k < 21:  return "#c9cc1b", "#000000" # Amarillo (Alegre)
-    if k < 27:  return "#cc7c1b", "#000000" # Naranja (Duro)
-    if k < 34:  return "#cc201b", "#000000" # Rojo (Muy duro)
-    return "#cc1b76", "#000000"             # Violeta (Temporal)
+    if k < 4:   return "#F5F5F5", "#333333" # Calma (Gris claro)
+    if k < 10:  return "#E3F2FD", "#1565C0" # Azul suave
+    if k < 16:  return "#E8F5E9", "#2E7D32" # Verde (Ideal)
+    if k < 21:  return "#FFF9C4", "#F57F17" # Amarillo (Alegre)
+    if k < 27:  return "#FFF3E0", "#E65100" # Naranja (Duro)
+    if k < 34:  return "#FFEBEE", "#C62828" # Rojo (Muy duro)
+    return "#F3E5F5", "#6A1B9A"             # Violeta (Temporal)
 
 def get_cardinal(deg):
     dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
@@ -77,7 +78,9 @@ def fetch_all_data():
             for est in data['listUltimos10min']:
                 sid = str(est['idEstacion'])
                 last_update = est.get('instanteLecturaUTC', 'N/D')
-                d = {'w_spd': 0, 'w_dir': 0, 'g_spd': 0, 'g_dir': 0, 'temp': 0, 'hr': 0, 'std': 0}
+                
+                # Inicializamos presión a None para no inventar datos
+                d = {'w_spd': 0, 'w_dir': 0, 'g_spd': 0, 'g_dir': 0, 'temp': 0, 'hr': 0, 'pres': None, 'std': 0}
                 
                 for m in est['listaMedidas']:
                     c = m['codigoParametro']; v = m['valor']
@@ -87,6 +90,7 @@ def fetch_all_data():
                     elif c == 'DV_RACHA_10m': d['g_dir'] = v
                     elif 'TA_AVG_1.5m' in c: d['temp'] = v
                     elif 'HR_AVG_1.5m' in c: d['hr'] = v
+                    elif 'PR_AVG_1.5m' in c: d['pres'] = v # Solo guarda si existe
                     elif 'DV_SD_10m' in c: d['std'] = v 
                 
                 if d['g_dir'] == 0 and d['w_dir'] != 0: d['g_dir'] = d['w_dir']
@@ -100,12 +104,7 @@ def render_wind_card(title, speed, deg):
     bg, txt = get_wind_style(speed)
     cardinal = get_cardinal(deg)
     
-    # LÓGICA DE ROTACIÓN:
-    # Usamos la flecha '⬇' (Unicode). 
-    # A 0 grados (rotación por defecto), apunta abajo. 
-    # Esto cumple tu regla: "0º N flecha hacia abajo".
-    # CSS transform rotate gira en sentido horario.
-    
+    # Flecha hacia abajo (Unicode) rotada con CSS
     html = f"""
     <div class="metric-card" style="background-color: {bg}; color: {txt};">
         <div class="label-text">{title}</div>
@@ -120,7 +119,8 @@ def render_wind_card(title, speed, deg):
 st.title("🌬️ Monitor Ría de Vigo")
 st.caption("@nicobm115-Datos MeteoGalicia")
 
-if st.button("↻ Recargar datos"):
+
+if st.button("↻ Recargar datos", type="primary"):
     st.cache_data.clear()
 
 data, timestamp = fetch_all_data()
@@ -162,14 +162,7 @@ if data:
                     val_turb = "--"
                     sub_txt = "No disponible"
                     color_txt = "#666" # Gris apagado
-                    # Lógica opcional para Cangas si std es 0
-
-                if d['std'] == 0 and d['w_spd'] > 0:
-                    # Gust Factor simple: (Racha - Media)
-                    # Si hay 5 nudos de media y 15 de racha, es muy racheado/turbulento
-                    diff_racha = mps_to_knots(d['g_spd'] - d['w_spd'])
-                    val_turb = f"Δ {diff_racha:.1f} kn" 
-                    sub_txt = "Racha vs Media"
+                    
 
                 st.markdown(f"""
                 <div class="metric-card" style="background-color: #262730; color: {color_txt}; border: 1px solid #444;">
@@ -181,13 +174,17 @@ if data:
 
             # --- METEO ---
             with c4:
-                st.metric(label="Temperatura", value=f"{d['temp']} °C", delta=f"{d['hr']}% HR")
+                # delta_color="off" para que no salga en rojo/verde
+                st.metric(label="Temperatura", value=f"{d['temp']} °C", delta=f"{d['hr']}% HR", delta_color="off")
                 
+                # Solo pintamos la presión si existe el dato real
+                if d['pres'] is not None:
+                    st.caption(f"Presión: {d['pres']:.0f} hPa")
             
             st.divider()
 
     # --- ANÁLISIS ---
-    with st.expander("📊 ANÁLISIS TÉRMICO ", expanded=False):
+    with st.expander("📊 ANÁLISIS TÉRMICO ", expanded=True):
         mar = data.get("10125")
         tierra = data.get("10154")
         
@@ -208,19 +205,11 @@ if data:
                 elif diff < -1.5:
                     st.warning("**POSIBLE BOCANA/TERRAL:** Tierra fría y densa.")
                 else:
-                    st.info("**⚖️ESTABILIDAD:** No hay gradiente térmico significativo.")
+                    st.info("**ESTABILIDAD:** No hay gradiente térmico significativo.")
             else:
-                st.error("Faltan datos de Presión/Humedad.")
+                st.warning("⚠️ Faltan datos de Presión en Cíes o Tierra para calcular la densidad.")
         else:
             st.error("Datos de referencia no disponibles.")
 
 else:
     st.error("Error conectando con MeteoGalicia.")
-
-
-
-
-
-
-
-
