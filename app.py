@@ -210,14 +210,14 @@ if data:
             st.error("Datos de referencia no disponibles.")
         st.info(
                     """
-                    comparacion de la densidad del aire en Cíes y Redondela , 
-                    valores en K pq asumimos gas ideal y entonces la densidad 
-                    depende de la temperatura, los valores se normalizan respecto HR
-                    y altitud para una comparacion real
+                    Comparación de la Temperatura Potencial Virtual  del aire en Cíes y Redondela , esto es
+                    una  'normalización' respecto HR y altitud  que representa la densidad real del aire y
+                    poder comparar los valores 
                     """
                 )
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
