@@ -64,7 +64,7 @@ def get_cardinal(deg):
     return dirs[ix % 16]
 
 @st.cache_data(ttl=300) 
-def fetch_all_data():
+def coger_datos():
     try:
         ids = [s['id'] for s in DISPLAY_STATIONS] + [REF_TIERRA_ID]
         r = requests.get(API_URL, params={'idEst': ",".join(ids)}, timeout=5)
@@ -125,7 +125,7 @@ st.caption("@nicobm115-Datos MeteoGalicia")
 if st.button("↻ Recargar datos"):
     st.cache_data.clear()
 
-data, timestamp = fetch_all_data()
+data, timestamp = coger_datos()
 
 if data:
     try:
@@ -210,6 +210,7 @@ if data:
 
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
