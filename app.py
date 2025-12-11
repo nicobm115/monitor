@@ -50,12 +50,12 @@ def calc_theta_v(t, hr, p):
 def get_wind_style(knots):
     """Devuelve (ColorFondo, ColorTexto) según intensidad"""
     k = float(knots)
-    if k < 4:   return "#F5F5F5", "#333333" # Calma (Gris claro)
-    if k < 10:  return "#E3F2FD", "#1565C0" # Azul suave
-    if k < 16:  return "#E8F5E9", "#2E7D32" # Verde (Ideal)
-    if k < 21:  return "#FFF9C4", "#F57F17" # Amarillo (Alegre)
-    if k < 27:  return "#FFF3E0", "#E65100" # Naranja (Duro)
-    if k < 34:  return "#FFEBEE", "#C62828" # Rojo (Muy duro)
+    if k < 4:   return "#F5F5F5", "#000000" # Calma (Gris claro)
+    if k < 12:  return "#E3F2FD", "#000000" # Azul suave
+    if k < 16:  return "#E8F5E9", "#000000" # Verde (Ideal)
+    if k < 21:  return "#FFF9C4", "#000000" # Amarillo (Alegre)
+    if k < 27:  return "#FFF3E0", "#000000" # Naranja (Duro)
+    if k < 34:  return "#FFEBEE", "#000000" # Rojo (Muy duro)
     return "#F3E5F5", "#6A1B9A"             # Violeta (Temporal)
 
 def get_cardinal(deg):
@@ -200,3 +200,4 @@ if data:
 
 else:
     st.error("Error conectando con MeteoGalicia.")
+
