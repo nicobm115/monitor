@@ -182,12 +182,7 @@ if data:
 
     # --- ANÁLISIS ---
     with st.expander("📊 ANÁLISIS TÉRMICO ", expanded=False):
-        st.info(
-                    """
-                    Use the table below to add, remove, and edit items.
-                    And don't forget to commit your changes when you're done.
-                    """
-                )
+        
         mar = data.get("10125")
         tierra = data.get("10154")
         
@@ -213,9 +208,17 @@ if data:
                 st.error("Faltan datos de Presión/Humedad.")
         else:
             st.error("Datos de referencia no disponibles.")
-
+        st.info(
+                    """
+                    comparacion de la densidad del aire en Cíes y Redondela , 
+                    valores en K pq asumimos gas ideal y entonces la densidad 
+                    depende de la temperatura, los valores se normalizan respecto HR
+                    y altitud para una comparacion real
+                    """
+                )
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
