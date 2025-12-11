@@ -158,7 +158,7 @@ if data:
                 # Si es 0 (imposible) o None, mostramos "--"
                 if d['std'] and d['std'] > 0:
                     val_turb = f"±{d['std']:.0f}°"
-                    sub_txt = "Desviación σ"
+                    sub_txt = "Desviación media dirección"
                     color_txt = "#FFF" # Blanco brillante
                 else:
                     val_turb = "--"
@@ -210,6 +210,7 @@ if data:
 
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
