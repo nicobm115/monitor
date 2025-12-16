@@ -85,7 +85,7 @@ def coger_datos():
                     if c == 'VV_AVG_10m': d['w_spd'] = v
                     elif c == 'DV_AVG_10m': d['w_dir'] = v
                     elif c == 'VV_RACHA_10m': d['g_spd'] = v
-                    elif c == 'DV_RACHA_10m': d['g_dir'] = v
+                    elif c == 'DV_CONDICION_10m': d['g_dir'] = v
                     elif 'TA_AVG_1.5m' in c: d['temp'] = v
                     elif 'HR_AVG_1.5m' in c: d['hr'] = v
                     elif 'PR_AVG_1.5m' in c: d['pres'] = v
@@ -217,6 +217,7 @@ if data:
                 )
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
