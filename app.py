@@ -59,9 +59,9 @@ def get_wind_style(knots):
     return "#cc1b76", "#000000"             # Violeta (Temporal)
 
 def get_cardinal(deg):
-    dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+    dirs = ["N",  "NE",  "E", "SE",  "S",  "SO", , "O", , "NO", ]
     ix = int((deg + 11.25)/22.5)
-    return dirs[ix % 16]
+    return dirs[ix % 8]
 
 @st.cache_data(ttl=300) 
 def coger_datos():
@@ -217,6 +217,7 @@ if data:
                 )
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
