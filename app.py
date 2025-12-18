@@ -60,7 +60,7 @@ def get_wind_style(knots):
 
 def get_cardinal(deg):
     dirs = ["N",  "NE",  "E", "SE",  "S",  "SO",  "O",  "NO", ]
-    ix = int((deg + 11.25)/22.5)
+    ix = int((deg + 22.5)/45)
     return dirs[ix % 8]
 
 @st.cache_data(ttl=300) 
@@ -217,6 +217,7 @@ if data:
                 )
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
