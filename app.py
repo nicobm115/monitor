@@ -200,7 +200,7 @@ if data:
                 st.markdown("---")
                 if diff > 2:
                     st.success("**POSIBLE VIRAZÓN:** ")
-                if diff > 2 and tierra['w_dir']>300 and tierra['w_dir']<100: 
+                elif diff > 2 and tierra['w_dir']>300 and tierra['w_dir']<100: 
                      st.warning("!! Hay  N-NO-NE el virazon NO funcionará ¡¡")
                 elif diff < -2:
                     st.success("**POSIBLE BOCANA/TERRAL:** Tierra fría y densa.")
@@ -219,6 +219,7 @@ if data:
                 )
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
