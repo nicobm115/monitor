@@ -198,9 +198,10 @@ if data:
                 ac3.metric("Diferencia (Δ)", f"{diff:+.2f} K", delta_color="inverse")
                 
                 st.markdown("---")
-                if diff > 1.5:
-                    st.success("**POSIBLE VIRAZÓN:** Tierra mucho más ligera. El aire frío del mar entrará acelerando.")
-                elif diff < -1.5:
+                if diff > 2:
+                    st.success("**POSIBLE VIRAZÓN:** ")
+                if diff > 2 and tierra['w_dir']>300 and tierra['w_dir']<100: 
+                elif diff < -2:
                     st.warning("**POSIBLE BOCANA/TERRAL:** Tierra fría y densa.")
                 else:
                     st.info("**⚖️ESTABILIDAD:** No hay gradiente térmico significativo.")
@@ -209,7 +210,7 @@ if data:
         else:
             st.error("Datos de referencia no disponibles.")
         st.info(
-                    """
+                    """          
                     Comparación de la Temperatura Potencial Virtual  del aire en Cíes y Redondela , esto es
                     una  'normalización' respecto HR y altitud  que representa la densidad real del aire y
                     poder comparar los valores 
@@ -217,6 +218,7 @@ if data:
                 )
 else:
     st.error("Error conectando con MeteoGalicia.")
+
 
 
 
